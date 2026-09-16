@@ -129,3 +129,39 @@
     @apply font-sans;
   }
 }
+
+@keyframes checkout-progress {
+  from {
+    width: 0%;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+@media print {
+  body > *:not(#checkout-print-root) {
+    display: none !important;
+  }
+
+  #checkout-print-root {
+    position: static !important;
+    background: white !important;
+  }
+
+  #checkout-print-root .checkout-overlay {
+    display: none !important;
+  }
+
+  #checkout-print-root .checkout-actions,
+  #checkout-print-root .checkout-success-header {
+    display: none !important;
+  }
+
+  #checkout-print-root .ticket-stub {
+    box-shadow: none !important;
+    border: 1px solid #d4d4d8 !important;
+    color: black !important;
+    background: white !important;
+  }
+}

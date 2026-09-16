@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ArrowLeft, Clock3 } from "lucide-react";
 
+import { CheckoutModal } from "@/components/booking/checkout-modal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -25,6 +26,8 @@ type BookingInterfaceProps = {
 export function BookingInterface({ movie }: BookingInterfaceProps) {
   const [selectedShowtime, setSelectedShowtime] = useState(movie.showtimes[0]);
   const [selectedSeats, setSelectedSeats] = useState<Set<string>>(new Set());
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [checkoutKey, setCheckoutKey] = useState(0);
 
   const reservedSeats = useMemo(
     () => getReservedSeats(movie.id, selectedShowtime),
@@ -204,11 +207,29 @@ export function BookingInterface({ movie }: BookingInterfaceProps) {
             size="lg"
             className="w-full sm:w-auto"
             disabled={selectedCount === 0}
+            onClick={() => {
+              setCheckoutKey((key) => key + 1);
+              setCheckoutOpen(true);
+            }}
           >
             Proceed to Checkout
           </Button>
         </CardContent>
       </Card>
+
+      {checkoutOpen ? (
+        <CheckoutModal
+          key={checkoutKey}
+          open
+          onClose={() => setCheckoutOpen(false)}
+          details={{
+            movieTitle: movie.title,
+            showtime: selectedShowtime,
+            seats: Array.from(selectedSeats),
+            totalAmount,
+          }}
+        />
+      ) : null}
     </div>
   );
 }
