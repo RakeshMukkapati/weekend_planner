@@ -1,7 +1,11 @@
 import { notFound } from "next/navigation";
 
 import { BookingInterface } from "@/components/booking/booking-interface";
-import { getMovieById } from "@/data/movies";
+import { getMovieById, movies } from "@/data/movies";
+
+export function generateStaticParams() {
+  return movies.map((movie) => ({ id: movie.id }));
+}
 
 type BookPageProps = {
   params: Promise<{ id: string }>;
