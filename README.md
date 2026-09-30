@@ -29,3 +29,15 @@ npm run preview
 - Trip duration fixed to Saturday & Sunday
 - Side-by-side day columns with interactive, checkable activity cards
 - Warm slate and indigo minimalist theme
+
+## Publish to GitHub (`weekend_planner`)
+
+This environment does not have GitHub CLI credentials, so create the repository from your account (commits on this branch are already authored as **Rakesh Mukkapati** so they will not appear as Cursor on your contribution graph):
+
+```bash
+gh repo create weekend_planner --public --description "AI Weekend Itinerary Planner"
+git remote add github git@github.com:RakeshMukkapati/weekend_planner.git
+git push -u github cursor/weekend-planner-5ba7:main
+```
+
+Or use the **Create repo** pill in Cursor to link this project, then push branch `cursor/weekend-planner-5ba7`.
