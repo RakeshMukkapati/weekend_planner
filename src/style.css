@@ -27,4 +27,14 @@
   .activity-card--done .activity-title {
     @apply line-through text-slate-500;
   }
+
+  .loading-spinner {
+    animation: spin 0.8s linear infinite;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }

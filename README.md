@@ -12,10 +12,14 @@ A responsive single-page app for sketching a Saturday & Sunday trip. Pick a dest
 
 ```bash
 npm install
+cp .env.example .env
+# Add your Google Gemini API key to .env as VITE_GEMINI_API_KEY
 npm run dev
 ```
 
 Open [http://127.0.0.1:43129](http://127.0.0.1:43129).
+
+Click **Generate itinerary** to call the Gemini API (`generativelanguage.googleapis.com`) and render Saturday/Sunday timeline cards from the JSON response.
 
 ```bash
 npm run build
