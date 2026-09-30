@@ -4,6 +4,7 @@ const VIBE_OPTIONS = ['Foodie', 'Budget', 'Adventure', 'Relaxing', 'Family-Frien
 
 const GEMINI_MODEL = 'gemini-2.0-flash'
 const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`
+const STORAGE_KEY = 'weekend-planner:last-itinerary'
 
 const appState = {
   city: '',
@@ -12,6 +13,44 @@ const appState = {
   itinerary: null,
   error: null,
   loading: false,
+  completedIds: new Set(),
+}
+
+function saveItineraryToStorage() {
+  if (!appState.itinerary) return
+
+  const payload = {
+    city: appState.city,
+    vibe: appState.vibe,
+    duration: appState.duration,
+    itinerary: appState.itinerary,
+    completed: [...appState.completedIds],
+    savedAt: new Date().toISOString(),
+  }
+
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload))
+  } catch {
+    // Ignore quota or private-mode errors
+  }
+}
+
+function loadItineraryFromStorage() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return
+
+    const data = JSON.parse(raw)
+    if (!data?.itinerary) return
+
+    appState.city = String(data.city ?? '')
+    appState.vibe = VIBE_OPTIONS.includes(data.vibe) ? data.vibe : 'Foodie'
+    appState.duration = String(data.duration ?? 'Saturday & Sunday')
+    appState.itinerary = normalizeItinerary(data.itinerary)
+    appState.completedIds = new Set(Array.isArray(data.completed) ? data.completed : [])
+  } catch {
+    localStorage.removeItem(STORAGE_KEY)
+  }
 }
 
 function escapeHtml(text) {
@@ -112,16 +151,18 @@ async function fetchItineraryFromGemini(city, vibe, duration) {
 function renderActivityCard(day, item, index) {
   const id = activityCardId(day, index)
   const title = escapeHtml(item.activity)
+  const isDone = appState.completedIds.has(id)
   return `
     <label
       for="${id}"
-      class="activity-card group flex cursor-pointer gap-3 rounded-xl border border-slate-200/90 bg-white p-4 shadow-sm transition hover:border-indigo-200 hover:shadow-md"
+      class="activity-card group flex cursor-pointer gap-3 rounded-xl border border-slate-200/90 bg-white p-4 shadow-sm transition hover:border-indigo-200 hover:shadow-md${isDone ? ' activity-card--done' : ''}"
     >
       <input
         type="checkbox"
         id="${id}"
         class="activity-check mt-1 size-4 shrink-0 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
         aria-label="Mark ${title} as completed"
+        ${isDone ? 'checked' : ''}
       />
       <span class="min-w-0 flex-1">
         <span class="flex flex-wrap items-center gap-2">
@@ -166,9 +207,21 @@ function renderItinerarySection() {
     ? `<div class="mb-6 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800" role="alert">${escapeHtml(error)}</div>`
     : ''
 
+  const printButton = itinerary
+    ? `
+      <button
+        type="button"
+        id="print-itinerary-btn"
+        class="no-print inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-indigo-200 hover:text-indigo-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+      >
+        Print itinerary
+      </button>
+    `
+    : ''
+
   const grid = itinerary
     ? `
-      <div class="grid gap-6 lg:grid-cols-2 lg:gap-8">
+      <div id="printable-itinerary" class="print-itinerary grid gap-6 lg:grid-cols-2 lg:gap-8">
         ${renderDayColumn('Saturday', 'saturday', itinerary.saturday)}
         ${renderDayColumn('Sunday', 'sunday', itinerary.sunday)}
       </div>
@@ -186,14 +239,21 @@ function renderItinerarySection() {
       aria-labelledby="itinerary-heading"
       aria-busy="${appState.loading}"
     >
-      <div class="mb-8 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+      <div class="print-header hidden">
+        <h1 class="font-display text-2xl font-semibold text-slate-900">Weekend Itinerary</h1>
+        <p class="mt-1 text-sm text-slate-700">${city ? `${escapeHtml(city)} · ${escapeHtml(vibe)} · ${escapeHtml(appState.duration)}` : ''}</p>
+      </div>
+      <div class="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h2 id="itinerary-heading" class="font-display text-xl font-semibold text-slate-900 sm:text-2xl">
             Your weekend timeline
           </h2>
           <p class="mt-1 text-sm text-slate-600">${subtitle}</p>
         </div>
-        <p id="progress-label" class="text-sm font-medium text-slate-500" aria-live="polite">0 of 0 completed</p>
+        <div class="flex flex-wrap items-center gap-3">
+          ${printButton}
+          <p id="progress-label" class="no-print text-sm font-medium text-slate-500" aria-live="polite">0 of 0 completed</p>
+        </div>
       </div>
       ${errorBanner}
       ${grid}
@@ -223,7 +283,7 @@ function renderApp() {
   return `
     <div class="min-h-svh">
       ${loading ? renderSpinner() : ''}
-      <header class="relative overflow-hidden border-b border-slate-200/80 bg-gradient-to-br from-slate-100 via-indigo-50/40 to-slate-50">
+      <header class="no-print relative overflow-hidden border-b border-slate-200/80 bg-gradient-to-br from-slate-100 via-indigo-50/40 to-slate-50">
         <div class="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-indigo-200/30 blur-3xl" aria-hidden="true"></div>
         <div class="pointer-events-none absolute -bottom-16 -left-16 h-48 w-48 rounded-full bg-amber-100/40 blur-3xl" aria-hidden="true"></div>
         <div class="relative mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
@@ -296,7 +356,7 @@ function renderApp() {
 
       <main>${renderItinerarySection()}</main>
 
-      <footer class="border-t border-slate-200/80 py-8 text-center text-sm text-slate-500">
+      <footer class="no-print border-t border-slate-200/80 py-8 text-center text-sm text-slate-500">
         Built for quick weekend planning · HTML5 &amp; Tailwind CSS
       </footer>
     </div>
@@ -319,10 +379,21 @@ function bindActivityInteractions(root) {
       if (card) {
         card.classList.toggle('activity-card--done', input.checked)
       }
+      if (input.checked) {
+        appState.completedIds.add(input.id)
+      } else {
+        appState.completedIds.delete(input.id)
+      }
+      saveItineraryToStorage()
       updateProgress()
     })
   })
   updateProgress()
+}
+
+function printItinerary() {
+  if (!appState.itinerary) return
+  window.print()
 }
 
 function collectFormValues() {
@@ -346,6 +417,8 @@ async function handleGenerateItinerary(event) {
 
   try {
     appState.itinerary = await fetchItineraryFromGemini(city, vibe, duration)
+    appState.completedIds = new Set()
+    saveItineraryToStorage()
   } catch (err) {
     appState.error = err instanceof Error ? err.message : 'Something went wrong while generating your itinerary.'
   } finally {
@@ -362,7 +435,11 @@ function mountShell() {
   const form = document.getElementById('planner-form')
   form.addEventListener('submit', handleGenerateItinerary)
 
+  const printBtn = document.getElementById('print-itinerary-btn')
+  printBtn?.addEventListener('click', printItinerary)
+
   bindActivityInteractions(appRoot)
 }
 
+loadItineraryFromStorage()
 mountShell()
